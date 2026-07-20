@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>La Costa Bus Dashboard</title>
   <style>
-    /* E-INK / MONOCHROME OPTIMIZED STYLES */
+    /* MONOCHROME E-PAPER STYLES (reTerminal E1001 - 800x480) */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -100,7 +100,7 @@
       border: 1px solid #000000;
       padding: 6px;
       border-radius: 4px;
-      background: #f8f8f8;
+      background: #ffffff;
     }
 
     .eta-slot {
@@ -137,74 +137,84 @@
   </header>
 
   <div class="dashboard-grid" id="dashboard">
-    <div class="no-bus">Loading active stops...</div>
+    <div class="no-bus">Connecting to KMB API...</div>
   </div>
 
   <script>
     const ROUTES_CONFIG = [
-      { route: "43X", direction: "O", target_stop: "KAM ON COURT", service_type: "1", stop_id: null },
-      { route: "680", direction: "O", target_stop: "KAM CHUN COURT", service_type: "1", stop_id: null },
-      { route: "A41P", direction: "O", target_stop: "PO TAI STREET", service_type: "1", stop_id: null }
+      { 
+        route: "43X", 
+        stop_id: "90EEAA6D546F38E2", 
+        stop_name: "Kam On Court" 
+      },
+      { 
+        route: "680", 
+        stop_id: "E42BA38EA04FF59D", 
+        stop_name: "Kam Chun Court" 
+      },
+      { 
+        route: "A41P", 
+        stop_id: "72F67BA8BD14C92B", 
+        stop_name: "Po Tai Street" 
+      }
     ];
 
-    // Resolve Stop IDs once when page initializes
-    async function initStopIds() {
-      for (let config of ROUTES_CONFIG) {
-        const dir = config.direction === "I" ? "inbound" : "outbound";
-        try {
-          const res = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${config.route}/${dir}/${config.service_type}`);
-          const data = await res.json();
-          
-          for (let item of data.data || []) {
-            const stopInfoRes = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/stop/${item.stop}`);
-            const stopInfo = await stopInfoRes.json();
-            const stopName = (stopInfo.data?.name_en || "").toUpperCase();
-            
-            if (stopName.includes(config.target_stop.toUpperCase())) {
-              config.stop_id = item.stop;
-              config.resolved_name = stopInfo.data.name_en;
-              break;
-            }
-          }
-        } catch (e) {
-          console.error(`Failed lookup for ${config.route}:`, e);
-        }
-      }
-      refreshDashboard();
+    function fetchWithTimeout(resource, options = {}) {
+      const { timeout = 8000 } = options;
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      return fetch(resource, {
+        ...options,
+        signal: controller.signal
+      }).finally(() => clearTimeout(id));
     }
 
-    async function fetchETA(stopId, route, targetDir) {
-      if (!stopId) return [];
+    async function fetchETA(config) {
       try {
-        const res = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/${stopId}`);
+        const res = await fetchWithTimeout(`https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/${config.stop_id}`);
+        if (!res.ok) throw new Error("API network error");
         const data = await res.json();
-        return (data.data || []).filter(b => b.route === route && b.dir === targetDir && b.eta);
+        
+        // Match strictly by route and make sure an ETA timestamp exists
+        const validEtas = (data.data || []).filter(
+          b => b.route === config.route && b.eta
+        );
+
+        return { config, etas: validEtas };
       } catch (e) {
-        console.error(`ETA fetch error for ${route}:`, e);
-        return [];
+        console.warn(`ETA fetch failed for ${config.route}:`, e);
+        return { config, etas: null };
       }
     }
 
     async function refreshDashboard() {
+      const promises = ROUTES_CONFIG.map(config => fetchETA(config));
+      const results = await Promise.allSettled(promises);
+
       const container = document.getElementById('dashboard');
       let html = '';
 
-      for (let config of ROUTES_CONFIG) {
-        const etas = await fetchETA(config.stop_id, config.route, config.direction);
-        const displayEtas = etas.slice(0, 3);
+      for (let result of results) {
+        if (result.status !== 'fulfilled') continue;
+        
+        const { config, etas } = result.value;
 
         html += `
           <div class="card">
             <div class="card-header">
               <span class="route-badge">${config.route}</span>
-              <span class="stop-name">${config.resolved_name || config.target_stop}</span>
+              <span class="stop-name">${config.stop_name}</span>
             </div>
             <div class="eta-list">
         `;
 
-        if (displayEtas.length === 0) {
+        if (etas === null) {
+          html += `<div class="no-bus">Network error - Retrying...</div>`;
+        } else if (etas.length === 0) {
           html += `<div class="no-bus">No upcoming departures scheduled</div>`;
         } else {
+          // Display top 3 upcoming arrivals
+          const displayEtas = etas.slice(0, 3);
           displayEtas.forEach((bus, i) => {
             const etaTime = new Date(bus.eta);
             const now = new Date();
@@ -232,10 +242,11 @@
       document.getElementById('last-update').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
     }
 
-    // Single 60-second timer to avoid screen flashing
-    setInterval(refreshDashboard, 60000);
+    // Refresh every 45 seconds
+    setInterval(refreshDashboard, 45000);
 
-    initStopIds();
+    // Initial load
+    refreshDashboard();
   </script>
 </body>
 </html>
