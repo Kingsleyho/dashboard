@@ -5,135 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>La Costa Bus Dashboard</title>
   <style>
-    /* MONOCHROME E-PAPER STYLES (reTerminal E1001 - 800x480) */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      background-color: #ffffff;
-      color: #000000;
-      width: 100vw;
-      height: 100vh;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #ffffff; color: #000000;
+      width: 100vw; height: 100vh; padding: 12px;
+      display: flex; flex-direction: column; justify-content: space-between;
       overflow: hidden;
     }
-
     header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 3px solid #000000;
-      padding-bottom: 8px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 3px solid #000; padding-bottom: 8px;
     }
-
-    h1 {
-      font-size: 1.5rem;
-      font-weight: 900;
-      letter-spacing: -0.5px;
-      text-transform: uppercase;
-    }
-
-    .status-bar {
-      font-size: 0.9rem;
-      font-weight: bold;
-    }
-
-    .dashboard-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 10px;
-      flex-grow: 1;
-    }
-
-    .card {
-      border: 2px solid #000000;
-      border-radius: 6px;
-      padding: 10px 14px;
-      background: #ffffff;
-    }
-
+    h1 { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; }
+    .status-bar { font-size: 0.9rem; font-weight: bold; }
+    .dashboard-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; flex-grow: 1; }
+    .card { border: 2px solid #000; border-radius: 6px; padding: 10px 14px; background: #fff; }
     .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 2px dashed #000000;
-      padding-bottom: 6px;
-      margin-bottom: 8px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 2px dashed #000; padding-bottom: 6px; margin-bottom: 8px;
     }
-
-    .route-badge {
-      background: #000000;
-      color: #ffffff;
-      font-weight: 900;
-      padding: 3px 10px;
-      border-radius: 4px;
-      font-size: 1.2rem;
-    }
-
-    .stop-name {
-      font-size: 1rem;
-      font-weight: bold;
-      text-transform: uppercase;
-    }
-
-    .eta-list {
-      list-style: none;
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
+    .route-badge { background: #000; color: #fff; font-weight: 900; padding: 3px 10px; border-radius: 4px; font-size: 1.2rem; }
+    .stop-name { font-size: 1rem; font-weight: bold; text-transform: uppercase; }
+    .eta-list { display: flex; justify-content: space-between; gap: 10px; list-style: none; }
     .eta-item {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid #000000;
-      padding: 6px;
-      border-radius: 4px;
-      background: #ffffff;
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      border: 1px solid #000; padding: 6px; border-radius: 4px; background: #fff;
     }
-
-    .eta-slot {
-      font-size: 0.75rem;
-      font-weight: bold;
-      color: #333333;
-    }
-
-    .eta-time {
-      font-size: 0.85rem;
-      margin: 2px 0;
-    }
-
-    .eta-mins {
-      font-size: 1.1rem;
-      font-weight: 900;
-    }
-
-    .no-bus {
-      width: 100%;
-      text-align: center;
-      font-weight: bold;
-      padding: 8px 0;
-    }
+    .eta-slot { font-size: 0.75rem; font-weight: bold; color: #333; }
+    .eta-time { font-size: 0.85rem; margin: 2px 0; }
+    .eta-mins { font-size: 1.1rem; font-weight: 900; }
+    .no-bus { width: 100%; text-align: center; font-weight: bold; padding: 8px 0; }
   </style>
 </head>
 <body>
 
   <header>
     <h1>La Costa Bus Dashboard</h1>
-    <div class="status-bar">
-      Updated: <span id="last-update">--:--</span>
-    </div>
+    <div class="status-bar">Updated: <span id="last-update">--:--</span></div>
   </header>
 
   <div class="dashboard-grid" id="dashboard">
@@ -141,87 +50,58 @@
   </div>
 
   <script>
-    const ROUTES_CONFIG = [
-      { 
-        route: "43X", 
-        stop_id: "90EEAA6D546F38E2", 
-        stop_name: "Kam On Court" 
-      },
-      { 
-        route: "680", 
-        stop_id: "E42BA38EA04FF59D", 
-        stop_name: "Kam Chun Court" 
-      },
-      { 
-        route: "A41P", 
-        stop_id: "72F67BA8BD14C92B", 
-        stop_name: "Po Tai Street" 
-      }
+    const ROUTES = [
+      { route: "43X", stop_id: "90EEAA6D546F38E2", stop_name: "Kam On Court" },
+      { route: "680", stop_id: "E42BA38EA04FF59D", stop_name: "Kam Chun Court" },
+      { route: "A41P", stop_id: "72F67BA8BD14C92B", stop_name: "Po Tai Street" }
     ];
 
-    function fetchWithTimeout(resource, options = {}) {
-      const { timeout = 8000 } = options;
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), timeout);
-      return fetch(resource, {
-        ...options,
-        signal: controller.signal
-      }).finally(() => clearTimeout(id));
-    }
-
-    async function fetchETA(config) {
+    async function fetchETA(item) {
       try {
-        const res = await fetchWithTimeout(`https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/${config.stop_id}`);
-        if (!res.ok) throw new Error("API network error");
-        const data = await res.json();
+        const url = `https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/${item.stop_id}`;
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
         
-        // Match strictly by route and make sure an ETA timestamp exists
-        const validEtas = (data.data || []).filter(
-          b => b.route === config.route && b.eta
-        );
-
-        return { config, etas: validEtas };
-      } catch (e) {
-        console.warn(`ETA fetch failed for ${config.route}:`, e);
-        return { config, etas: null };
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        
+        // Filter strictly for this route
+        const busEtas = (json.data || []).filter(b => b.route === item.route && b.eta);
+        return { item, etas: busEtas };
+      } catch (err) {
+        console.warn(`Fetch failed for ${item.route}:`, err);
+        return { item, etas: null };
       }
     }
 
-    async function refreshDashboard() {
-      const promises = ROUTES_CONFIG.map(config => fetchETA(config));
-      const results = await Promise.allSettled(promises);
-
+    async function updateDashboard() {
       const container = document.getElementById('dashboard');
       let html = '';
 
-      for (let result of results) {
-        if (result.status !== 'fulfilled') continue;
+      for (const config of ROUTES) {
+        const { item, etas } = await fetchETA(config);
         
-        const { config, etas } = result.value;
-
         html += `
           <div class="card">
             <div class="card-header">
-              <span class="route-badge">${config.route}</span>
-              <span class="stop-name">${config.stop_name}</span>
+              <span class="route-badge">${item.route}</span>
+              <span class="stop-name">${item.stop_name}</span>
             </div>
             <div class="eta-list">
         `;
 
         if (etas === null) {
-          html += `<div class="no-bus">Network error - Retrying...</div>`;
+          html += `<div class="no-bus">API Error - Retrying...</div>`;
         } else if (etas.length === 0) {
-          html += `<div class="no-bus">No upcoming departures scheduled</div>`;
+          html += `<div class="no-bus">No upcoming departures</div>`;
         } else {
-          // Display top 3 upcoming arrivals
-          const displayEtas = etas.slice(0, 3);
-          displayEtas.forEach((bus, i) => {
+          etas.slice(0, 3).forEach((bus, i) => {
             const etaTime = new Date(bus.eta);
-            const now = new Date();
-            const mins = Math.round((etaTime - now) / 60000);
+            const mins = Math.round((etaTime - new Date()) / 60000);
             const timeStr = etaTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-
-            let label = mins <= 0 ? 'ARRIVING' : `${mins} MINS`;
+            const label = mins <= 0 ? 'ARRIVING' : `${mins} MINS`;
 
             html += `
               <div class="eta-item">
@@ -237,16 +117,12 @@
       }
 
       container.innerHTML = html;
-      
-      const now = new Date();
-      document.getElementById('last-update').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      document.getElementById('last-update').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
     }
 
-    // Refresh every 45 seconds
-    setInterval(refreshDashboard, 45000);
-
-    // Initial load
-    refreshDashboard();
+    // Initial run + 45s interval
+    updateDashboard();
+    setInterval(updateDashboard, 45000);
   </script>
 </body>
 </html>
