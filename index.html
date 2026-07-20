@@ -46,33 +46,33 @@
   </header>
 
   <div class="dashboard-grid" id="dashboard">
-    <div class="no-bus">Connecting to KMB API...</div>
+    <div class="no-bus">Connecting to KMB Open Data...</div>
   </div>
 
   <script>
-    const ROUTES = [
-      { route: "43X", stop_id: "90EEAA6D546F38E2", stop_name: "Kam On Court" },
-      { route: "680", stop_id: "E42BA38EA04FF59D", stop_name: "Kam Chun Court" },
-      { route: "A41P", stop_id: "72F67BA8BD14C92B", stop_name: "Po Tai Street" }
+    const TARGET_ROUTES = [
+      { route: "43X", target_dest: "TUEN MUN", display_stop: "Kam On Court" },
+      { route: "680", target_dest: "ADMIRALTY", display_stop: "Kam Chun Court" },
+      { route: "A41P", target_dest: "AIRPORT", display_stop: "Po Tai Street" }
     ];
 
-    async function fetchETA(item) {
+    async function fetchRouteData(config) {
       try {
-        const url = `https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/${item.stop_id}`;
-        const res = await fetch(url, {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' }
-        });
+        // Query route-level ETA directly from KMB API
+        const url = `https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${config.route}/1`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Network Response Error");
         
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
-        
-        // Filter strictly for this route
-        const busEtas = (json.data || []).filter(b => b.route === item.route && b.eta);
-        return { item, etas: busEtas };
-      } catch (err) {
-        console.warn(`Fetch failed for ${item.route}:`, err);
-        return { item, etas: null };
+        const rawData = json.data || [];
+
+        // Filter valid ETAs
+        const validEtas = rawData.filter(item => item.eta && item.eta.length > 0);
+
+        return { config, etas: validEtas };
+      } catch (e) {
+        console.error(`Failed to fetch ${config.route}:`, e);
+        return { config, etas: null };
       }
     }
 
@@ -80,26 +80,30 @@
       const container = document.getElementById('dashboard');
       let html = '';
 
-      for (const config of ROUTES) {
-        const { item, etas } = await fetchETA(config);
-        
+      for (const config of TARGET_ROUTES) {
+        const { etas } = await fetchRouteData(config);
+
         html += `
           <div class="card">
             <div class="card-header">
-              <span class="route-badge">${item.route}</span>
-              <span class="stop-name">${item.stop_name}</span>
+              <span class="route-badge">${config.route}</span>
+              <span class="stop-name">${config.display_stop}</span>
             </div>
             <div class="eta-list">
         `;
 
         if (etas === null) {
-          html += `<div class="no-bus">API Error - Retrying...</div>`;
+          html += `<div class="no-bus">API Network Error</div>`;
         } else if (etas.length === 0) {
-          html += `<div class="no-bus">No upcoming departures</div>`;
+          html += `<div class="no-bus">No upcoming departures scheduled</div>`;
         } else {
-          etas.slice(0, 3).forEach((bus, i) => {
+          // Take the first 3 unique live departures
+          const displayList = etas.slice(0, 3);
+          
+          displayList.forEach((bus, i) => {
             const etaTime = new Date(bus.eta);
-            const mins = Math.round((etaTime - new Date()) / 60000);
+            const now = new Date();
+            const mins = Math.round((etaTime - now) / 60000);
             const timeStr = etaTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
             const label = mins <= 0 ? 'ARRIVING' : `${mins} MINS`;
 
@@ -120,9 +124,11 @@
       document.getElementById('last-update').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
     }
 
-    // Initial run + 45s interval
-    updateDashboard();
+    // Refresh every 45 seconds (E-Paper optimal update frequency)
     setInterval(updateDashboard, 45000);
+
+    // Initial render
+    updateDashboard();
   </script>
 </body>
 </html>
