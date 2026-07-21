@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #fff; padding: 4px; display: flex; flex-direction: column; }
+  html, body { width: 100%; height: 100vh; overflow: hidden; background: #fff; padding: 4px; display: flex; flex-direction: column; }
   .card { flex: 1; border: 1px solid #000; padding: 4px; margin-bottom: 4px; display: flex; flex-direction: column; justify-content: space-between; }
   .head { font-size: 13px; font-weight: bold; display: flex; justify-content: space-between; }
   .etas { display: flex; gap: 4px; flex: 1; margin-top: 2px; }
@@ -35,56 +35,59 @@
 <div id="upd">Upd --:--</div>
 
 <script>
-// Using standard route-eta endpoint with type-safe string comparisons
 const URL_680 = "https://data.etabus.gov.hk/v1/transport/kmb/route-eta/680/1";
 const URL_289K = "https://data.etabus.gov.hk/v1/transport/kmb/route-eta/289K/1";
 
-function fetchETA(url, seqNum, elId) {
-  const slots = document.getElementById(elId).children;
+// Persistent cache to retain previous data across refreshes
+const cache = {
+  'r-680': [],
+  'r-289k': []
+};
 
+function render(elId) {
+  const slots = document.getElementById(elId).children;
+  const list = cache[elId];
+
+  for (let i = 0; i < 2; i++) {
+    const bus = slots[i];
+    if (list[i] && list[i].eta) {
+      const eta = new Date(list[i].eta);
+      const m = Math.max(0, Math.round((eta - Date.now()) / 60000));
+      
+      bus.children[0].textContent = eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      bus.children[1].textContent = m <= 1 ? 'ARR' : m + 'm';
+    } else {
+      bus.children[0].textContent = '--:--';
+      bus.children[1].textContent = '--';
+    }
+  }
+}
+
+function fetchRoute(url, seqNum, elId) {
   fetch(url)
-    .then(res => {
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      return res.json();
-    })
+    .then(res => res.json())
     .then(json => {
       const raw = json.data || [];
-      
-      // Convert seq to String to prevent type mismatch bugs (e.g. "7" vs 7)
-      const list = raw
+      const fresh = raw
         .filter(x => String(x.seq) === String(seqNum) && x.eta)
         .sort((a, b) => new Date(a.eta) - new Date(b.eta))
         .slice(0, 2);
 
-      for (let i = 0; i < 2; i++) {
-        const bus = slots[i];
-        if (list[i] && list[i].eta) {
-          const eta = new Date(list[i].eta);
-          const m = Math.max(0, Math.round((eta - Date.now()) / 60000));
-
-          bus.children[0].textContent = eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-          bus.children[1].textContent = m <= 1 ? 'ARR' : m + 'm';
-        } else {
-          // If empty (e.g. Citybus turn on route 680)
-          bus.children[0].textContent = '--:--';
-          bus.children[1].textContent = 'N/A';
-        }
+      // Only overwrite cache if new valid data is returned
+      if (fresh.length > 0) {
+        cache[elId] = fresh;
       }
+      render(elId);
     })
-    .catch(err => {
-      slots[0].children[0].textContent = 'ERR';
-      slots[0].children[1].textContent = '--';
-      slots[1].children[0].textContent = 'ERR';
-      slots[1].children[1].textContent = '--';
+    .catch(() => {
+      // On fetch error, render the cached previous data
+      render(elId);
     });
 }
 
 function update() {
-  // Route 680 (Kam Chun Court = sequence 7)
-  fetchETA(URL_680, 7, "r-680");
-  
-  // Route 289K (Ocean View = sequence 9)
-  fetchETA(URL_289K, 9, "r-289k");
+  fetchRoute(URL_680, 7, "r-680");   // 680 at Kam Chun Court (seq 7)
+  fetchRoute(URL_289K, 9, "r-289k"); // 289K at Ocean View (seq 9)
 
   const now = new Date();
   document.getElementById('upd').textContent = 'Upd ' + 
@@ -92,6 +95,7 @@ function update() {
     String(now.getMinutes()).padStart(2, '0');
 }
 
+// Initial call + strict 30-second cron job
 update();
 setInterval(update, 30000);
 </script>
