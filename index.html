@@ -2,72 +2,132 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>680 @ Kam Chun Court</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>680 Kam Chun Court</title>
+
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,sans-serif;background:#fff;color:#000;padding:12px}
-h1{font-size:1.2rem;font-weight:900;text-transform:uppercase;border-bottom:3px solid #000;padding-bottom:6px}
-.meta{font-size:.8rem;font-weight:700;margin:6px 0 10px}
-.card{border:2px solid #000;border-radius:6px;padding:10px}
-.head{display:flex;justify-content:space-between;border-bottom:2px dashed #000;padding-bottom:6px;margin-bottom:8px}
-.badge{background:#000;color:#fff;font-weight:900;padding:2px 8px;border-radius:4px;font-size:1.1rem}
-.stop{font-size:.95rem;font-weight:700;text-transform:uppercase}
-.etas{display:flex;gap:8px;list-style:none}
-.etas li{flex:1;border:1px solid #000;border-radius:4px;padding:6px;text-align:center}
-.slot{font-size:.7rem;font-weight:700}
-.time{font-size:.85rem;margin:2px 0}
-.mins{font-size:1rem;font-weight:900}
-.msg{text-align:center;font-weight:700;padding:8px 0}
+body{
+  font-family:sans-serif;
+  margin:10px;
+  background:#fff;
+  color:#000
+}
+h1{
+  font-size:18px;
+  margin-bottom:4px
+}
+#updated{
+  font-size:12px;
+  margin-bottom:8px
+}
+#etas{
+  display:flex;
+  gap:6px
+}
+.bus{
+  flex:1;
+  border:1px solid #000;
+  padding:6px;
+  text-align:center
+}
+.slot{
+  font-size:11px
+}
+.time{
+  font-size:13px
+}
+.mins{
+  font-size:18px;
+  font-weight:bold
+}
 </style>
+
 </head>
 <body>
-<h1>Route 680</h1>
-<p class="meta">Kam Chun Court → Admiralty · <span id="updated">--:--</span></p>
-<div class="card">
-  <div class="head">
-    <span class="badge">680</span>
-    <span class="stop">Kam Chun Court</span>
+
+<h1>680 Kam Chun Court</h1>
+<div id="updated">--:--</div>
+
+<div id="etas">
+  <div class="bus">
+    <div class="slot">BUS 1</div>
+    <div class="time">--:--</div>
+    <div class="mins">--</div>
   </div>
-  <ul class="etas" id="etas">
-    <li class="msg">Loading...</li>
-  </ul>
+
+  <div class="bus">
+    <div class="slot">BUS 2</div>
+    <div class="time">--:--</div>
+    <div class="mins">--</div>
+  </div>
+
+  <div class="bus">
+    <div class="slot">BUS 3</div>
+    <div class="time">--:--</div>
+    <div class="mins">--</div>
+  </div>
 </div>
+
 <script>
-const API = "https://data.etabus.gov.hk/v1/transport/kmb/eta/664BAA2EA12B80B1/680/1";
-const list = document.getElementById("etas");
-const updated = document.getElementById("updated");
-function fmt(iso) {
-  const d = new Date(iso);
-  const mins = Math.round((d - Date.now()) / 60000);
-  return {
-    time: d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
-    label: mins <= 0 ? "NOW" : mins + " MIN"
-  };
-}
-async function refresh() {
+const API =
+"https://data.etabus.gov.hk/v1/transport/kmb/route-eta/680/1";
+
+const buses = document.querySelectorAll(".bus");
+
+async function updateETA() {
   try {
     const res = await fetch(API);
-    if (!res.ok) throw new Error("API error");
-    const rows = (await res.json()).data.filter(r => r.eta && r.dir === "O");
-    list.innerHTML = "";
-    if (!rows.length) {
-      list.innerHTML = '<li class="msg">No buses scheduled</li>';
-    } else {
-      rows.slice(0, 3).forEach((row, i) => {
-        const { time, label } = fmt(row.eta);
-        const li = document.createElement("li");
-        li.innerHTML = '<div class="slot">BUS ' + (i + 1) + '</div><div class="time">' + time + '</div><div class="mins">' + label + '</div>';
-        list.appendChild(li);
-      });
-    }
-  } catch (e) {
-    list.innerHTML = '<li class="msg">Network error</li>';
+    const json = await res.json();
+
+    const data = (json.data || [])
+      .filter(x => x.seq === 7 && x.eta)
+      .sort((a,b) => new Date(a.eta) - new Date(b.eta))
+      .slice(0,3);
+
+    buses.forEach((bus,i) => {
+      const t = bus.querySelector(".time");
+      const m = bus.querySelector(".mins");
+
+      if(data[i]){
+        const eta = new Date(data[i].eta);
+
+        const mins = Math.max(
+          0,
+          Math.round((eta - Date.now())/60000)
+        );
+
+        t.textContent = eta.toLocaleTimeString([],{
+          hour:"2-digit",
+          minute:"2-digit",
+          hour12:false
+        });
+
+        m.textContent =
+          mins <= 1 ? "ARR" : mins + "m";
+      } else {
+        t.textContent = "--:--";
+        m.textContent = "--";
+      }
+    });
+
+  } catch(e) {
+    document.getElementById("etas").innerHTML =
+      "<div>API ERROR</div>";
+    console.log(e);
   }
-  updated.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+
+  document.getElementById("updated").textContent =
+    "Updated " +
+    new Date().toLocaleTimeString([],{
+      hour:"2-digit",
+      minute:"2-digit",
+      hour12:false
+    });
 }
-refresh();
-setInterval(refresh, 45000);
+
+updateETA();
+setInterval(updateETA,30000);
 </script>
+
 </body>
 </html>
