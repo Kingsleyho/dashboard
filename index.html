@@ -3,190 +3,93 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kam Chun Court Bus ETAs</title>
-
+<title>Bus ETA</title>
 <style>
-body {
-  font-family: sans-serif;
-  margin: 12px;
-  background: #f9f9f9;
-  color: #000;
-}
-.route-card {
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-h1 {
-  font-size: 16px;
-  margin: 0 0 2px 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.route-badge {
-  background: #d32f2f;
-  color: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 14px;
-}
-.stop-info {
-  font-size: 11px;
-  color: #666;
-  margin-bottom: 8px;
-}
-.etas {
-  display: flex;
-  gap: 6px;
-}
-.bus {
-  flex: 1;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 6px;
-  text-align: center;
-  background: #fafafa;
-}
-.slot {
-  font-size: 10px;
-  color: #777;
-}
-.time {
-  font-size: 12px;
-  margin-top: 2px;
-}
-.mins {
-  font-size: 18px;
-  font-weight: bold;
-  color: #1b5e20;
-}
-.mins.arr {
-  color: #d32f2f;
-}
-#updated {
-  font-size: 11px;
-  color: #888;
-  text-align: center;
-  margin-top: 10px;
-}
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+  body { background: #fff; color: #000; padding: 6px; }
+  
+  .card { border: 1px solid #000; padding: 6px; margin-bottom: 6px; }
+  .head { font-size: 14px; font-weight: bold; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  
+  .etas { display: flex; gap: 4px; }
+  .bus { flex: 1; border: 1px solid #aaa; text-align: center; padding: 4px 2px; }
+  .time { font-size: 11px; color: #444; }
+  .mins { font-size: 18px; font-weight: bold; }
+  
+  #upd { font-size: 10px; text-align: center; color: #666; margin-top: 4px; }
 </style>
 </head>
 <body>
 
-<!-- ROUTE 680 SECTION -->
-<div class="route-card">
-  <h1>
-    <span>680 &rarr; Admiralty</span>
-    <span class="route-badge">680</span>
-  </h1>
-  <div class="stop-info">Stop: Kam Chun Court</div>
-  
-  <div class="etas" id="etas-680">
-    <div class="bus"><div class="slot">BUS 1</div><div class="time">--:--</div><div class="mins">--</div></div>
-    <div class="bus"><div class="slot">BUS 2</div><div class="time">--:--</div><div class="mins">--</div></div>
-    <div class="bus"><div class="slot">BUS 3</div><div class="time">--:--</div><div class="mins">--</div></div>
+<!-- ROUTE 680 -->
+<div class="card">
+  <div class="head"><span>680</span><span>Kam Chun Ct</span></div>
+  <div class="etas" id="r-680">
+    <div class="bus"><div class="time">--:--</div><div class="mins">--</div></div>
+    <div class="bus"><div class="time">--:--</div><div class="mins">--</div></div>
   </div>
 </div>
 
-<!-- ROUTE 289K SECTION -->
-<div class="route-card">
-  <h1>
-    <span>289K &rarr; University Station</span>
-    <span class="route-badge" style="background:#0288d1;">289K</span>
-  </h1>
-  <div class="stop-info">Stop: Ocean View (Nearby)</div>
-  
-  <div class="etas" id="etas-289k">
-    <div class="bus"><div class="slot">BUS 1</div><div class="time">--:--</div><div class="mins">--</div></div>
-    <div class="bus"><div class="slot">BUS 2</div><div class="time">--:--</div><div class="mins">--</div></div>
-    <div class="bus"><div class="slot">BUS 3</div><div class="time">--:--</div><div class="mins">--</div></div>
+<!-- ROUTE 289K -->
+<div class="card">
+  <div class="head"><span>289K &rarr; Univ</span><span>Ocean View</span></div>
+  <div class="etas" id="r-289k">
+    <div class="bus"><div class="time">--:--</div><div class="mins">--</div></div>
+    <div class="bus"><div class="time">--:--</div><div class="mins">--</div></div>
   </div>
 </div>
 
-<div id="updated">Updated --:--</div>
+<div id="upd">Upd --:--</div>
 
 <script>
-// API Configurations
-const ROUTES = [
-  {
-    id: "680",
-    url: "https://data.etabus.gov.hk/v1/transport/kmb/route-eta/680/1",
-    seq: 7, // Kam Chun Court
-    containerId: "etas-680"
-  },
-  {
-    id: "289K",
-    url: "https://data.etabus.gov.hk/v1/transport/kmb/route-eta/289K/1",
-    seq: 9, // Ocean View -> University Station
-    containerId: "etas-289k"
-  }
+const CONFIG = [
+  { id: 'r-680', url: 'https://data.etabus.gov.hk/v1/transport/kmb/route-eta/680/1', seq: 7 },
+  { id: 'r-289k', url: 'https://data.etabus.gov.hk/v1/transport/kmb/route-eta/289K/1', seq: 9 }
 ];
 
-async function fetchRouteETA(route) {
-  const container = document.getElementById(route.containerId);
-  const buses = container.querySelectorAll(".bus");
-
+async function updateETA(cfg) {
+  const el = document.getElementById(cfg.id);
+  const slots = el.querySelectorAll('.bus');
+  
   try {
-    const res = await fetch(route.url);
+    const res = await fetch(cfg.url);
     const json = await res.json();
-
+    
     const data = (json.data || [])
-      .filter(x => x.seq === route.seq && x.eta)
+      .filter(x => x.seq === cfg.seq && x.eta)
       .sort((a,b) => new Date(a.eta) - new Date(b.eta))
-      .slice(0,3);
+      .slice(0, 2); // strictly top 2 consecutive buses
 
-    buses.forEach((bus, i) => {
-      const t = bus.querySelector(".time");
-      const m = bus.querySelector(".mins");
-
+    slots.forEach((bus, i) => {
+      const t = bus.children[0];
+      const m = bus.children[1];
+      
       if (data[i]) {
         const eta = new Date(data[i].eta);
         const mins = Math.max(0, Math.round((eta - Date.now()) / 60000));
-
-        t.textContent = eta.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false
-        });
-
-        if (mins <= 1) {
-          m.textContent = "ARR";
-          m.classList.add("arr");
-        } else {
-          m.textContent = mins + "m";
-          m.classList.remove("arr");
-        }
+        
+        t.textContent = eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        m.textContent = mins <= 1 ? 'ARR' : mins + 'm';
       } else {
-        t.textContent = "--:--";
-        m.textContent = "--";
-        m.classList.remove("arr");
+        t.textContent = '--:--';
+        m.textContent = '--';
       }
     });
   } catch(e) {
-    container.innerHTML = "<div style='color:red; font-size:12px;'>API Error</div>";
-    console.error(`Error loading route ${route.id}:`, e);
+    el.innerHTML = '<div style="font-size:11px">ERR</div>';
   }
 }
 
-async function updateAllETAs() {
-  await Promise.all(ROUTES.map(route => fetchRouteETA(route)));
-
-  document.getElementById("updated").textContent =
-    "Updated " + new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false
-    });
+async function refreshAll() {
+  await Promise.all(CONFIG.map(updateETA));
+  const now = new Date();
+  document.getElementById('upd').textContent = 'Upd ' + 
+    now.getHours().toString().padStart(2,'0') + ':' + 
+    now.getMinutes().toString().padStart(2,'0');
 }
 
-// Initial fetch and 30-second interval timer
-updateAllETAs();
-setInterval(updateAllETAs, 30000);
+refreshAll();
+setInterval(refreshAll, 30000);
 </script>
 
 </body>
