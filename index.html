@@ -35,52 +35,61 @@
 <div id="upd">Upd --:--</div>
 
 <script>
-// Using direct Stop-ETA API endpoints (Stop IDs: 914D16773FCDEBD8 for Kam Chun Ct, 8FA7590FF6FFBF87 for Ocean View)
-const URL_680 = "https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/914D16773FCDEBD8";
-const URL_289K = "https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/8FA7590FF6FFBF87";
+// Using standard route-eta endpoint with type-safe string comparisons
+const URL_680 = "https://data.etabus.gov.hk/v1/transport/kmb/route-eta/680/1";
+const URL_289K = "https://data.etabus.gov.hk/v1/transport/kmb/route-eta/289K/1";
 
-function load(url, routeName, bound, elId) {
+function fetchETA(url, seqNum, elId) {
   const slots = document.getElementById(elId).children;
-  
+
   fetch(url)
-    .then(r => r.json())
+    .then(res => {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    })
     .then(json => {
-      // Filter for specific route & direction, then take top 2
-      const list = (json.data || [])
-        .filter(x => x.route === routeName && (bound ? x.bound === bound : true) && x.eta)
+      const raw = json.data || [];
+      
+      // Convert seq to String to prevent type mismatch bugs (e.g. "7" vs 7)
+      const list = raw
+        .filter(x => String(x.seq) === String(seqNum) && x.eta)
+        .sort((a, b) => new Date(a.eta) - new Date(b.eta))
         .slice(0, 2);
 
       for (let i = 0; i < 2; i++) {
         const bus = slots[i];
-        if (list[i]) {
+        if (list[i] && list[i].eta) {
           const eta = new Date(list[i].eta);
           const m = Math.max(0, Math.round((eta - Date.now()) / 60000));
-          
+
           bus.children[0].textContent = eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
           bus.children[1].textContent = m <= 1 ? 'ARR' : m + 'm';
         } else {
+          // If empty (e.g. Citybus turn on route 680)
           bus.children[0].textContent = '--:--';
-          bus.children[1].textContent = '--';
+          bus.children[1].textContent = 'N/A';
         }
       }
     })
-    .catch(() => {
+    .catch(err => {
       slots[0].children[0].textContent = 'ERR';
+      slots[0].children[1].textContent = '--';
       slots[1].children[0].textContent = 'ERR';
+      slots[1].children[1].textContent = '--';
     });
 }
 
 function update() {
-  // 680 Outbound (O = towards Admiralty/Central)
-  load(URL_680, "680", "O", "r-680");
+  // Route 680 (Kam Chun Court = sequence 7)
+  fetchETA(URL_680, 7, "r-680");
   
-  // 289K Circular to University Station
-  load(URL_289K, "289K", null, "r-289k");
+  // Route 289K (Ocean View = sequence 9)
+  fetchETA(URL_289K, 9, "r-289k");
 
   const now = new Date();
   document.getElementById('upd').textContent = 'Upd ' + 
-    String(now.getHours()).padStart(2,'0') + ':' + 
-    String(now.getMinutes()).padStart(2,'0');
+    String(now.getHours()).padStart(2, '0') + ':' + 
+    String(now.getMinutes()).padStart(2, '0');
 }
 
 update();
