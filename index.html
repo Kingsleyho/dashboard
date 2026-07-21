@@ -1,134 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>La Costa Bus Dashboard</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #ffffff; color: #000000;
-      width: 100vw; height: 100vh; padding: 12px;
-      display: flex; flex-direction: column; justify-content: space-between;
-      overflow: hidden;
-    }
-    header {
-      display: flex; justify-content: space-between; align-items: center;
-      border-bottom: 3px solid #000; padding-bottom: 8px;
-    }
-    h1 { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; }
-    .status-bar { font-size: 0.9rem; font-weight: bold; }
-    .dashboard-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; flex-grow: 1; }
-    .card { border: 2px solid #000; border-radius: 6px; padding: 10px 14px; background: #fff; }
-    .card-header {
-      display: flex; justify-content: space-between; align-items: center;
-      border-bottom: 2px dashed #000; padding-bottom: 6px; margin-bottom: 8px;
-    }
-    .route-badge { background: #000; color: #fff; font-weight: 900; padding: 3px 10px; border-radius: 4px; font-size: 1.2rem; }
-    .stop-name { font-size: 1rem; font-weight: bold; text-transform: uppercase; }
-    .eta-list { display: flex; justify-content: space-between; gap: 10px; list-style: none; }
-    .eta-item {
-      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      border: 1px solid #000; padding: 6px; border-radius: 4px; background: #fff;
-    }
-    .eta-slot { font-size: 0.75rem; font-weight: bold; color: #333; }
-    .eta-time { font-size: 0.85rem; margin: 2px 0; }
-    .eta-mins { font-size: 1.1rem; font-weight: 900; }
-    .no-bus { width: 100%; text-align: center; font-weight: bold; padding: 8px 0; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>680 @ Kam Chun Court</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#fff;color:#000;padding:12px}
+h1{font-size:1.2rem;font-weight:900;text-transform:uppercase;border-bottom:3px solid #000;padding-bottom:6px}
+.meta{font-size:.8rem;font-weight:700;margin:6px 0 10px}
+.card{border:2px solid #000;border-radius:6px;padding:10px}
+.head{display:flex;justify-content:space-between;border-bottom:2px dashed #000;padding-bottom:6px;margin-bottom:8px}
+.badge{background:#000;color:#fff;font-weight:900;padding:2px 8px;border-radius:4px;font-size:1.1rem}
+.stop{font-size:.95rem;font-weight:700;text-transform:uppercase}
+.etas{display:flex;gap:8px;list-style:none}
+.etas li{flex:1;border:1px solid #000;border-radius:4px;padding:6px;text-align:center}
+.slot{font-size:.7rem;font-weight:700}
+.time{font-size:.85rem;margin:2px 0}
+.mins{font-size:1rem;font-weight:900}
+.msg{text-align:center;font-weight:700;padding:8px 0}
+</style>
 </head>
 <body>
-
-  <header>
-    <h1>La Costa Bus Dashboard</h1>
-    <div class="status-bar">Updated: <span id="last-update">--:--</span></div>
-  </header>
-
-  <div class="dashboard-grid" id="dashboard">
-    <div class="no-bus">Connecting to KMB Open Data...</div>
+<h1>Route 680</h1>
+<p class="meta">Kam Chun Court → Admiralty · <span id="updated">--:--</span></p>
+<div class="card">
+  <div class="head">
+    <span class="badge">680</span>
+    <span class="stop">Kam Chun Court</span>
   </div>
-
-  <script>
-    const TARGET_ROUTES = [
-      { route: "43X", target_dest: "TUEN MUN", display_stop: "Kam On Court" },
-      { route: "680", target_dest: "ADMIRALTY", display_stop: "Kam Chun Court" },
-      { route: "A41P", target_dest: "AIRPORT", display_stop: "Po Tai Street" }
-    ];
-
-    async function fetchRouteData(config) {
-      try {
-        // Query route-level ETA directly from KMB API
-        const url = `https://data.etabus.gov.hk/v1/transport/kmb/route-eta/${config.route}/1`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Network Response Error");
-        
-        const json = await res.json();
-        const rawData = json.data || [];
-
-        // Filter valid ETAs
-        const validEtas = rawData.filter(item => item.eta && item.eta.length > 0);
-
-        return { config, etas: validEtas };
-      } catch (e) {
-        console.error(`Failed to fetch ${config.route}:`, e);
-        return { config, etas: null };
-      }
+  <ul class="etas" id="etas">
+    <li class="msg">Loading...</li>
+  </ul>
+</div>
+<script>
+const API = "https://data.etabus.gov.hk/v1/transport/kmb/eta/664BAA2EA12B80B1/680/1";
+const list = document.getElementById("etas");
+const updated = document.getElementById("updated");
+function fmt(iso) {
+  const d = new Date(iso);
+  const mins = Math.round((d - Date.now()) / 60000);
+  return {
+    time: d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
+    label: mins <= 0 ? "NOW" : mins + " MIN"
+  };
+}
+async function refresh() {
+  try {
+    const res = await fetch(API);
+    if (!res.ok) throw new Error("API error");
+    const rows = (await res.json()).data.filter(r => r.eta && r.dir === "O");
+    list.innerHTML = "";
+    if (!rows.length) {
+      list.innerHTML = '<li class="msg">No buses scheduled</li>';
+    } else {
+      rows.slice(0, 3).forEach((row, i) => {
+        const { time, label } = fmt(row.eta);
+        const li = document.createElement("li");
+        li.innerHTML = '<div class="slot">BUS ' + (i + 1) + '</div><div class="time">' + time + '</div><div class="mins">' + label + '</div>';
+        list.appendChild(li);
+      });
     }
-
-    async function updateDashboard() {
-      const container = document.getElementById('dashboard');
-      let html = '';
-
-      for (const config of TARGET_ROUTES) {
-        const { etas } = await fetchRouteData(config);
-
-        html += `
-          <div class="card">
-            <div class="card-header">
-              <span class="route-badge">${config.route}</span>
-              <span class="stop-name">${config.display_stop}</span>
-            </div>
-            <div class="eta-list">
-        `;
-
-        if (etas === null) {
-          html += `<div class="no-bus">API Network Error</div>`;
-        } else if (etas.length === 0) {
-          html += `<div class="no-bus">No upcoming departures scheduled</div>`;
-        } else {
-          // Take the first 3 unique live departures
-          const displayList = etas.slice(0, 3);
-          
-          displayList.forEach((bus, i) => {
-            const etaTime = new Date(bus.eta);
-            const now = new Date();
-            const mins = Math.round((etaTime - now) / 60000);
-            const timeStr = etaTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-            const label = mins <= 0 ? 'ARRIVING' : `${mins} MINS`;
-
-            html += `
-              <div class="eta-item">
-                <span class="eta-slot">BUS ${i + 1}</span>
-                <span class="eta-time">${timeStr}</span>
-                <span class="eta-mins">${label}</span>
-              </div>
-            `;
-          });
-        }
-
-        html += `</div></div>`;
-      }
-
-      container.innerHTML = html;
-      document.getElementById('last-update').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-    }
-
-    // Refresh every 45 seconds (E-Paper optimal update frequency)
-    setInterval(updateDashboard, 45000);
-
-    // Initial render
-    updateDashboard();
-  </script>
+  } catch (e) {
+    list.innerHTML = '<li class="msg">Network error</li>';
+  }
+  updated.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+refresh();
+setInterval(refresh, 45000);
+</script>
 </body>
 </html>
